@@ -1,100 +1,100 @@
-# Single-View Metrology from Orthogonal Vanishing Points
+# 单视图测高：用消失点从一张照片测高度
 
-Estimate the metric height of a vertical object in one photograph using perspective geometry and a reference object of known height. The primary goal is fully automatic measurement in a prepared, marker-equipped scene. The planned tool will show its geometry and quality decision, and export a measurement record that another person can replay.
+用一张照片和一件已知高度的参照物，估算另一件竖直物体的实际高度。项目的主要目标是在提前摆好纸标的场景里，选好照片后自动测高，省去每张图手动标点的步骤。程序计划同时输出解释图、质量判断和可复跑的测量记录。
 
-**Status:** The repository currently contains the Python module skeleton and project documentation. The measurement pipeline, demo, and experimental results are planned.
+**当前进度**：已有 Python 代码骨架和项目文档。测量流程、演示和实验结果待实现和验证。
 
-This is a self-defined final project for CS460 / EIE460 / SE460 Computer Vision at Macau University of Science and Technology.
+这是澳门科技大学计算机视觉课程 CS460 / EIE460 / SE460 的自选期末项目。
 
-## What the project does
+## 项目怎么测
 
-**Inputs.** One photograph of a prepared scene and a saved setup profile with tag roles and the known reference height. Four flat tags define a rectangle on the support plane. Tags at the reference and target endpoints identify the points to measure. The reference and targets are vertical and share that support plane. Manual and assisted modes can supply the same points and lines for unmarked images.
+1. **输入照片和场景配置。** 拍一张摆好纸标的照片，并加载事先保存的纸标编号、用途和参考物实测高度。参照物和待测物都竖直立在同一平面上。
+2. **识别并计算。** 程序从照片里找出 ArUco 纸标的编号和角点。平铺的四张纸标呈矩形，用来估计平面上两个方向的消失点。箱顶和箱脚的纸标提供竖直方向及测量端点。程序用这些透视关系，把参考物的已知高度换算到待测物的位置，从而估算待测高度。待测物的卷尺实测高度只用于验收。[OpenCV ArUco 检测器](https://docs.opencv.org/4.12.0/d2/d1a/classcv_1_1aruco_1_1ArucoDetector.html) · [单视图测高论文](https://www.robots.ox.ac.uk/~vgg/publications/2000/Criminisi00a/)
+3. **输出结果。** 计划输出高度、标有关键点和辅助线的照片，以及质量状态和原因。批量评测会记录误差和失败案例，也会检查角点偏移会怎样影响结果。
 
-**Method.** Detect ArUco IDs and corners, recover the two directions of the support plane and the vertical direction, then transfer the reference scale to the target position. The target's physical height is used only for evaluation. Tag IDs and image locations provide geometry, and only the reference height supplies the metric scale. Level and pitched cameras share the same homogeneous estimator, including valid vanishing points at infinity. Focal length remains an optional diagnostic for suitable finite orthogonal points. [OpenCV ArUco detector](https://docs.opencv.org/4.12.0/d2/d1a/classcv_1_1aruco_1_1ArucoDetector.html) · [Single-view height relation](https://www.robots.ox.ac.uk/~vgg/publications/2000/Criminisi00a/)
+消失点是现实中同方向的平行线在照片里看起来汇聚的位置。如果它们在画面里仍然平行，就用无穷远方向来表示。水平和俯仰拍摄都用同一套齐次坐标计算。条件合适时，还可以用有限消失点检查焦距。
 
-**Outputs.** The planned result includes the height in centimeters or meters, an annotated image, and a quality status with reasons. Batch evaluation will record estimates, errors, and failed measurements. A sensitivity analysis will show how small changes in annotations affect the estimate.
-
-| Mode | User interaction | Purpose |
+| 模式 | 用户需要做什么 | 用途 |
 | --- | --- | --- |
-| Automatic | Select a photo and reuse the saved setup profile. | Measure a valid prepared scene with zero per-photo annotations. Return actionable failure reasons when the inputs cannot support a reliable estimate. |
-| Manual | Mark scene lines and object endpoints. | Establish a reproducible geometric baseline and give the reviewer direct control. |
-| Assisted | Confirm or correct candidate directions and mark object endpoints. | Reduce line annotation effort while keeping the geometry visible and editable. |
+| **全自动** | 选照片，加载已保存的场景配置。 | 用于已布置纸标的场景。程序自动测高，无法可靠测量时说明具体原因。 |
+| 手动 | 标出场景里的辅助线和物体顶脚。 | 用于建立可复现的几何对照，也可以处理没有纸标的照片。 |
+| 半自动 | 确认或修正程序找到的线，再标物体顶脚。 | 用于减少无纸标照片的标线工作量。 |
 
-## Capture equipment and setup
+## 拍摄设备与场地
 
-The team has selected the following setup for the automatic measurement experiments. Measure the assembled reference object before capture and record the first usable photographs during testing.
-
-| Item | Selected setup | Status |
+| 物品 | 规格和用法 | 状态 |
 | --- | --- | --- |
-| Camera | Xiaomi 13 rear **1× main camera**. Use normal 4:3 still photos and retain the originals. | On hand |
-| Tripod and lighting | AT005 desktop tripod with ball head, landscape phone clamp, and fill-light kit. Use room lighting with fill where shadows obscure the markers. | Selected for purchase |
-| Common support plane | One **60 × 80 cm, 5 mm** matte white rigid PVC foam board. Place both boxes and all six flat markers on it. | Selected for purchase |
-| Reference and target | Rigid, flat-bottom cardboard boxes, each with a **20 × 20 cm** footprint. The nominal heights are **20 cm** for the reference and **30 cm** for the initial target. | Selected for purchase |
-| Physical measurements and mounting | Tape measure for the actual heights. Removable tape or a flat scrap of card can secure and support the paper markers when needed. | Tape measure on hand |
-| Printable markers | [ArUco marker sheets, IDs 0–7](docs/assets/aruco-4x4-50-80mm.pdf). Print three complete sets on single-sided black-and-white A4 at **100% actual size** (12 sheets total). Each cutout is **10 × 10 cm**, with an 8 cm black square and 1 cm white margins. | PDF ready for printing |
+| 手机 | 小米 13，后置 **1× 主摄**，用 4:3 普通拍照模式，留存原图。 | 已有 |
+| 三脚架和补光 | AT005 桌面三脚架、万向球头、可横拍的手机夹及补光灯。房间大灯照常开，按需补亮纸标附近的阴影。 | 已选定 |
+| 底板 | **60 × 80 cm、5 mm 厚**的哑光白色硬质 PVC 发泡板。两只箱子和六张平放的纸标都放在同一块板上。 | 已选定 |
+| 参考箱和待测箱 | 硬质平底纸箱，底面均为 **20 × 20 cm**。参考箱标称高 **20 cm**，首个待测箱标称高 **30 cm**。组装后量实际高度。 | 已选定 |
+| 卷尺和固定材料 | 用卷尺测实际高度。有翘边时用可移除胶带固定纸标，顶标伸出的白边可用废卡纸托平。 | 卷尺已有 |
+| 可打印纸标 | [ArUco 纸标 PDF（编号 0–7）](docs/assets/aruco-4x4-50-80mm.pdf)。按 **A4 黑白单面、100% 实际大小**打印 3 套，共 12 张。每个剪下的纸标为 **10 × 10 cm**，黑框边长 8 cm，四边各留 1 cm 白边。 | PDF 已就绪 |
 
-The initial site is a **70 × 130 cm** indoor floor area, with an unobstructed corridor as an alternate. Align the board's 80 cm edge with the 130 cm direction to leave about 50 cm for the camera position. Place the boxes side by side behind the flat marker rectangle. Start with rectangle center spacings of **44 × 35 cm**. Adjust the camera position or pitch until all eight markers are sharp, visible in full, and clear of reflections and obstructions. For the perspective tests, also stagger the boxes at different distances from the camera while keeping their bases and the flat markers on the same plane. Keep the setup temporary and clear the walkway after each capture session.
+优先在 **70 × 130 cm** 的室内平地拍摄，也可临时用宽敞的走廊。底板的 80 cm 边沿场地的 130 cm 方向摆，约留 50 cm 给手机和三脚架。先把两箱并排放在底板后部，四张平面码的中心可摆成约 **44 × 35 cm** 的矩形。调整手机位置和俯拍角度，确保八张纸标都完整、清晰，避免反光或遮挡。测试透视影响时，再把两个箱子摆到距手机不同的前后位置。拍完收走器材。
 
-| Marker IDs | Placement |
+### 纸标怎么摆
+
+| 编号 | 摆放位置 |
 | --- | --- |
-| `0`, `1`, `2`, `3` | Flat on the board at the rear left, rear right, front right, and front left, viewed from the camera. Their centers define the rectangle. |
-| `4`, `5` | Reference box base and top. |
-| `6`, `7` | Target box base and top. |
+| `0`、`1`、`2`、`3` | 从手机一侧看，按后左、后右、前右、前左摆在底板上，四张的中心组成矩形。 |
+| `4`、`5` | 参考箱的脚标、顶标。 |
+| `6`、`7` | 待测箱的脚标、顶标。 |
 
-All eight marks use OpenCV `DICT_4X4_50`. Use each ID once in the scene. Lay each base tag flat in front of its box and mount each top tag vertically on the corresponding front face. Align the **printed upper-left corner of the black square** on each base and top tag with the actual lower and upper endpoints of the same vertical line. Confirm the box stands square and measure the reference height on this line. Record the target's measured height separately for evaluation. See the [scene format](data/README.md) for the saved setup and [OpenCV's ArUco documentation](https://docs.opencv.org/4.12.0/de/d67/group__objdetect__aruco.html) for the dictionary.
+八张纸标都使用 OpenCV 的 `DICT_4X4_50` 字典，同一场景中每个编号只出现一次。脚标平放在箱子正前方，顶标竖着贴在箱子正面。每张顶脚纸标都取**印刷方向的左上黑框角**作为测量点。对同一只箱子，这两个点分别对齐真实的箱脚和箱顶，并处在同一条竖直线上。确认箱子站直后，沿这条线量参考箱的实际高度。待测箱的实测高度单独记录，用来和程序结果做对比。[场景文件格式](data/README.md) · [OpenCV ArUco 字典说明](https://docs.opencv.org/4.12.0/de/d67/group__objdetect__aruco.html)
 
-## Experiments
+## 实验怎么做
 
-- **Geometry checks.** Use known projections to verify the estimator for level and pitched cameras, finite and infinite vanishing points, and degenerate inputs.
-- **Public development examples.** Use documented photographs with known reference dimensions and traceable target measurements. [Oxford library example, Figure 21](https://www.robots.ox.ac.uk/~vgg/publications/2000/Criminisi00a/criminisi00a.pdf)
-- **Independent captured examples.** Use a tripod for consistent framing and independently measure the targets. Reuse each object's measured height across photographs. Freeze the method and parameters before evaluating the reserved scenes.
-- **Controlled comparisons.** Compare the direct pixel-height ratio, manually annotated geometry, and fully automatic marker-based geometry on the same prepared photographs. Hold endpoints fixed in a separate experiment to isolate line estimation. Report height errors, zero-click success rate, unsuccessful cases with reasons, and annotation effort. Evaluate unmarked images separately with the manual or assisted modes.
+- **核对几何计算。** 用已知正确结果的合成图测试水平和俯仰拍摄、有限和无穷远消失点，以及几何条件不足的输入。
+- **试跑公开样例。** 选择有来源记录、已知参考尺寸和可核对目标高度的照片。[牛津图书馆样例，论文图 21](https://www.robots.ox.ac.uk/~vgg/publications/2000/Criminisi00a/criminisi00a.pdf)
+- **拍摄独立验收样例。** 用三脚架保持构图稳定，独立量取待测物的实际高度。同一物体挪位置拍摄时继续用同一份实测值。先用开发照片确定方法和参数，再评测保留的验收照片。
+- **做方法对比。** 在同一批照片上对比直接按像素高度比例计算、手动标注后做透视校正、全自动纸标测高。另做一组固定顶脚点的实验，单独比较辅助线估计对结果的影响。记录高度误差、零点击成功率、失败原因和人工操作量。无纸标照片的手动和半自动结果单独统计。
 
-## Team and presentation
+## 分工与展示
 
-| Team member | Student ID | GitHub | Planned responsibilities |
+| 组员 | 学号 | GitHub | 计划分工 |
 | --- | --- | --- | --- |
-| 刘军威 | 1230025933 | [Ricin-brony](https://github.com/Ricin-brony) | Projective geometry, vanishing-point estimation, and the measurement pipeline. |
-| 许彦熙 | 1230023419 | [cdwfb](https://github.com/cdwfb) | Scene preparation, independent measurements, the pixel-ratio baseline, and evaluation. |
+| 刘军威 | 1230025933 | [Ricin-brony](https://github.com/Ricin-brony) | 射影几何、消失点估计和测高流程。 |
+| 许彦熙 | 1230023419 | [cdwfb](https://github.com/cdwfb) | 场景布置、实物测量、像素比例对照方法和实验评估。 |
 
-Both members review the automatic demo, reproduce the evaluation, and contribute to the presentation and report.
+两人一起检查自动测高演示、复现实验，并参与展示和报告。
 
-The **December 10 Pre** introduces the project. The presentation covers the task, one example of the input and expected output, the method, the experiment design, and the two members' responsibilities. [Pre content outline](docs/oral_presentation.md)
+**12 月 10 日的 Pre 是项目介绍。** 用一个例子讲清楚要解决什么问题、照片怎么输入、预期输出长什么样、怎么测高、怎么验证，以及两人的分工。[Pre 提纲](docs/oral_presentation.md)
 
-## Requirements: software
+## 软件要求
 
-The planned implementation targets Python 3.10 or later with NumPy, OpenCV-Python, and Matplotlib. See [requirements.txt](requirements.txt) for the dependency ranges. The geometry pipeline runs on a CPU.
+计划使用 Python 3.10 或以上版本，以及 NumPy、OpenCV-Python 和 Matplotlib。依赖版本见 [requirements.txt](requirements.txt)。几何计算可在 CPU 上运行。
 
-Create an environment with `python -m venv .venv`. Activate it with `.venv\Scripts\Activate.ps1` in PowerShell or `source .venv/bin/activate` on macOS and Linux. Then run `python -m pip install -r requirements.txt`.
+用 `python -m venv .venv` 创建虚拟环境。PowerShell 用 `.venv\Scripts\Activate.ps1` 激活，macOS 或 Linux 用 `source .venv/bin/activate`。然后运行 `python -m pip install -r requirements.txt`。
 
-## Pretrained models
+## 预训练模型
 
-The project uses classical vision and projective geometry. It does not train a model or load checkpoints. [Model and weight notes](weights/README.md)
+本项目使用传统计算机视觉和几何计算，无需训练模型或下载权重。[模型和权重说明](weights/README.md)
 
-## Preparation for testing
+## 测试准备
 
-1. Prepare a scene with a known reference height. Save the marker profile for automatic runs or mark its geometry for a manual run. Record target ground truth separately if available. [Scene format](data/README.md)
-2. The planned reproducibility check will use a versioned synthetic example and a documented configuration. A clean environment should be able to regenerate the same overlay and measurement table.
-3. These commands describe the planned interfaces. They will become the supported quick start when the implementation and examples are available.
+1. 先准备参考物实测高度已知的场景。自动模式使用保存好的纸标配置，手动模式使用已标注的辅助线和顶脚点。有待测物实测值时单独保存。[场景文件格式](data/README.md)
+2. 复现测试计划使用纳入版本管理的合成样例和书面配置。在干净环境里应能重新生成相同的标注图和测量表。
+3. 以下为计划中的命令。等实现和样例就绪并验证后，再作为快速开始说明。
 
 ```bash
 python -m src.metrology --input data/example --output results/example --save-debug results/example/debug
 python -m src.metrology --mode auto --input data/rigged-example --output results/rigged-example --save-debug results/rigged-example/debug
 ```
 
-The planned outputs are `overlay.png`, `heights.csv`, and `run.json`. The run record will preserve the input annotations, configuration, line source, and quality reasons used to obtain the result.
+计划生成 `overlay.png`（标注图）、`heights.csv`（高度表）和 `run.json`（运行记录）。运行记录保存所用配置、点线标注、辅助线来源和质量判断原因，方便复跑。
 
-## Acceptance criteria
+## 验收标准
 
-- With a saved setup profile and a valid photograph of a prepared scene, the automatic mode produces a height and the three output files with zero per-photo annotations.
-- A missing or ambiguous required marker returns a clear failure reason. The measured height is empty for a rejected target.
-- The automatic and manual modes share the same geometry and retain the inputs needed to replay a result. The held-out evaluation reports both height error and zero-click success rate, including failed cases.
-- The provisional team targets for valid held-out scenes are at least **90% zero-click success** and a **median absolute relative height error of at most 5%** among successful cases. Confirm and freeze the test conditions and targets using development captures before running the held-out set.
+- 布置好场景并保存配置后，自动模式对有效照片零点击测高，给出高度和三份结果文件。
+- 遇到缺少必需纸标、编号重复或无法明确识别标记时，给出原因。被拒测的目标在结果中留空高度。
+- 自动和手动模式共用几何算法，并保留复跑结果所需的信息。验收统计包括高度误差、零点击成功率和失败案例。
+- 组内暂定目标为有效验收照片的**零点击成功率至少 90%**，成功案例的**绝对相对误差中位数不超过 5%**。先用开发照片确认并固定验收条件和目标，再跑保留的验收集。
 
-## Development and report
+## 开发计划与报告
 
-The measurement goals, data contract, and acceptance criteria guide the implementation. The initial Python skeleton is a starting point. Replace individual components or rebuild the pipeline where that better serves these requirements. Record interface changes and verify the relevant examples against the acceptance criteria.
+开发以测量目标、数据协议和验收标准为准。现有 Python 骨架是起点，后续可以替换模块或重写流程。接口改动同步更新到 README，并用对应的样例验收。
 
-- [Development order and acceptance criteria](docs/development_plan.md)
-- [Data and annotation contract](data/README.md)
-- [Final report map](docs/report_map.md)
+- [开发顺序和验收要求](docs/development_plan.md)
+- [数据和标注格式](data/README.md)
+- [期末报告提纲](docs/report_map.md)
