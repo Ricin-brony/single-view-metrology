@@ -1,203 +1,100 @@
 # Single-View Metrology from Orthogonal Vanishing Points
 
-Self-defined final-project topic under Topic 4 of the course assignment.
+Estimate the metric height of a vertical object in one photograph using perspective geometry and a reference object of known height. The primary goal is fully automatic measurement in a prepared, marker-equipped scene. The planned tool will show its geometry and quality decision, and export a measurement record that another person can replay.
 
-From one photograph of a scene that contains two horizontal directions and a vertical direction, estimate the vanishing points, the vanishing line of the ground, and the height of an object standing on that ground. A second object of known height supplies the scale. The one-week version implements this classical projective pipeline and checks it against ruler measurements. It does not train a network.
+**Status:** The repository currently contains the Python module skeleton and project documentation. The measurement pipeline, demo, and experimental results are planned.
 
-This repository is the project webpage required by the final assignment. It records the plan for the oral presentation and every item the assignment asks the webpage to contain. The measuring program itself is the work of the coming week. No height, focal length, or error in this repository is invented.
+This is a self-defined final project for CS460 / EIE460 / SE460 Computer Vision at Macau University of Science and Technology.
 
-Course: 2609 CS460 / EIE460 / SE460, Computer Vision, Macau University of Science and Technology.
+## What the project does
 
-## Team members and division of work
+**Inputs.** One photograph of a prepared scene and a saved setup profile with tag roles and the known reference height. Four flat tags define a rectangle on the support plane. Tags at the reference and target endpoints identify the points to measure. The reference and targets are vertical and share that support plane. Manual and assisted modes can supply the same points and lines for unmarked images.
 
-| Name | Student ID | Responsibility in the current plan |
+**Method.** Detect ArUco IDs and corners, recover the two directions of the support plane and the vertical direction, then transfer the reference scale to the target position. The target's physical height is used only for evaluation. Tag IDs and image locations provide geometry, and only the reference height supplies the metric scale. Level and pitched cameras share the same homogeneous estimator, including valid vanishing points at infinity. Focal length remains an optional diagnostic for suitable finite orthogonal points. [OpenCV ArUco detector](https://docs.opencv.org/4.12.0/d2/d1a/classcv_1_1aruco_1_1ArucoDetector.html) · [Single-view height relation](https://www.robots.ox.ac.uk/~vgg/publications/2000/Criminisi00a/)
+
+**Outputs.** The planned result includes the height in centimeters or meters, an annotated image, and a quality status with reasons. Batch evaluation will record estimates, errors, and failed measurements. A sensitivity analysis will show how small changes in annotations affect the estimate.
+
+| Mode | User interaction | Purpose |
 | --- | --- | --- |
-| 刘君威 Liu Junwei | 1230025933 | Project proposal, pipeline design, line and vanishing-point estimation, height formula, experiments, English report, and this webpage |
+| Automatic | Select a photo and reuse the saved setup profile. | Measure a valid prepared scene with zero per-photo annotations. Return actionable failure reasons when the inputs cannot support a reliable estimate. |
+| Manual | Mark scene lines and object endpoints. | Establish a reproducible geometric baseline and give the reviewer direct control. |
+| Assisted | Confirm or correct candidate directions and mark object endpoints. | Reduce line annotation effort while keeping the geometry visible and editable. |
 
-If the team has more members, add each name and student ID to this table before the oral presentation and before the PDF is submitted. The PDF file name must contain the Chinese names and student IDs of every member. Only one member submits that PDF.
+## Capture equipment and setup
 
-Planned split if another member joins: one person owns capture, the ruler measurements, and the experiment table; the other owns the report figures and the webpage check. The split above is the plan while the team has one confirmed member.
+The team has selected the following setup for the automatic measurement experiments. Measure the assembled reference object before capture and record the first usable photographs during testing.
 
-## Research title and topic
+| Item | Selected setup | Status |
+| --- | --- | --- |
+| Camera | Xiaomi 13 rear **1× main camera**. Use normal 4:3 still photos and retain the originals. | On hand |
+| Tripod and lighting | AT005 desktop tripod with ball head, landscape phone clamp, and fill-light kit. Use room lighting with fill where shadows obscure the markers. | Selected for purchase |
+| Common support plane | One **60 × 80 cm, 5 mm** matte white rigid PVC foam board. Place both boxes and all six flat markers on it. | Selected for purchase |
+| Reference and target | Rigid, flat-bottom cardboard boxes, each with a **20 × 20 cm** footprint. The nominal heights are **20 cm** for the reference and **30 cm** for the initial target. | Selected for purchase |
+| Physical measurements and mounting | Tape measure for the actual heights. Removable tape or a flat scrap of card can secure and support the paper markers when needed. | Tape measure on hand |
+| Printable markers | [ArUco marker sheets, IDs 0–7](docs/assets/aruco-4x4-50-80mm.pdf). Print three complete sets on single-sided black-and-white A4 at **100% actual size** (12 sheets total). Each cutout is **10 × 10 cm**, with an 8 cm black square and 1 cm white margins. | PDF ready for printing |
 
-**Title:** Single-View Metrology from Orthogonal Vanishing Points
+The initial site is a **70 × 130 cm** indoor floor area, with an unobstructed corridor as an alternate. Align the board's 80 cm edge with the 130 cm direction to leave about 50 cm for the camera position. Place the boxes side by side behind the flat marker rectangle. Start with rectangle center spacings of **44 × 35 cm**. Adjust the camera position or pitch until all eight markers are sharp, visible in full, and clear of reflections and obstructions. For the perspective tests, also stagger the boxes at different distances from the camera while keeping their bases and the flat markers on the same plane. Keep the setup temporary and clear the walkway after each capture session.
 
-**Topic:** Recover the height of a vertical object from a single image, using vanishing points of an orthogonal scene and one reference object whose height is measured with a ruler.
+| Marker IDs | Placement |
+| --- | --- |
+| `0`, `1`, `2`, `3` | Flat on the board at the rear left, rear right, front right, and front left, viewed from the camera. Their centers define the rectangle. |
+| `4`, `5` | Reference box base and top. |
+| `6`, `7` | Target box base and top. |
 
-The scene is approximately a ground plane plus vertical objects, such as a room corner or a building facade. The camera intrinsic matrix is not calibrated beforehand. The principal point is taken as the image center, and the pixels are assumed square. Those assumptions are checked by the sign of the focal-length estimate. The height formula itself uses the vertical vanishing point, the ground vanishing line, and the reference height.
-
-## Requirements: software
-
-- Python 3.10 or newer
-- Packages in `requirements.txt`: NumPy, OpenCV-Python, Matplotlib
-- A browser for reading this page
-- A ruler, or any object whose height can be measured in meters before the photo is taken
-- No GPU is required
-
-Create the environment and install the packages:
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-On macOS or Linux, activate with `source .venv/bin/activate`.
-
-## Pretrained models
-
-This project does not train or download a neural network. There is no weight file. Edges, lines, vanishing points, and heights are classical geometry with the settings listed under Method.
-
-`weights/` is reserved and currently empty. Testing does not load a checkpoint.
-
-## Preparation for testing
-
-1. Install the software above.
-2. Measure the reference object with a ruler and write the height in meters. Measure every object that will appear in the error table the same way, before trusting the image estimate.
-3. Put one scene in `data/scene1/` as described in `data/README.md`: the photograph, the reference height, and the base and top image points of each vertical object.
-4. Create `results/` if it does not exist. The test command creates it when the program is in place.
-5. Run the test command below from the repository root.
-
-Photographs are not in this preliminary commit. The team will capture them in week one. Small images used in the report will be stored under `data/`. Large private originals can stay out of the repository.
-
-## Command for testing
-
-Planned command, to be implemented on day 2–5 of the one-week schedule:
-
-```bash
-python -m src.metrology --input data/scene1 --output results/scene1 --save-debug results/debug
-```
-
-The reference height is read from `data/scene1/reference.txt`. It is not hard-coded.
-
-Expected behavior once the program exists:
-
-- read the scene image and the annotation files
-- write an overlay with the detected lines, the vanishing points, and the measured segments
-- write a text table of estimated height against the ruler height for each annotated object
-- print the vertical vanishing point, the ground vanishing line, the focal-length sanity check, and the relative height error of each object
-
-This command is not runnable in the preliminary commit. `src/metrology.py` is the module layout and the comments for the key steps, not a finished measuring program.
-
-## Dataset
-
-The team will photograph 2 scenes with the same camera:
-
-- one easy indoor corner, or a corridor, with clear horizontal edges and vertical edges, a reference object, and two other vertical objects whose heights are known from the ruler
-- one harder scene with weak edges, a large depth range, or a tilted object, so the report can show where the vertical-object assumption fails
-
-Each object used in the table stands on the same floor. The reference object is vertical. Image coordinates of each base point and top point are stored in the annotation file. No external labeled dataset is required.
-
-## Method
-
-The pipeline follows projective single-view metrology. The height equation is the one derived by Criminisi, Reid, and Zisserman (IJCV 2000), written below with the normalization the implementation will use. The report will derive it in the text and cite that paper.
-
-1. **Gaussian smoothing**, then a gradient magnitude, so edge pixels are less sensitive to noise.
-2. **Line hypotheses** from edge pixels. A line is the homogeneous least-squares fit \(ax+by+c=0\). RANSAC keeps a segment when inlier edge pixels lie within a pixel distance of the line.
-3. **Two horizontal vanishing points.** Parallel scene lines in one horizontal direction meet at one vanishing point. That point is the null-space vector of the stacked line equations, again inside RANSAC so a stray line does not pull the intersection. The same step is repeated for the second horizontal direction and for the vertical direction, giving \(v_1\), \(v_2\), and \(v_z\).
-4. **Ground vanishing line** \(l = v_1 \times v_2\). It is scaled so that \(l_1^2+l_2^2=1\). With image points written \((x,y,1)\), \(l \cdot p\) is then the signed pixel distance from the point to the line.
-5. **Focal-length check**, not a required input of the height formula. With the principal point \(p\) at the image center and square pixels,
-   \[
-   f=\sqrt{-(v_1-p)^\top(v_2-p)}
-   \]
-   when the quantity under the square root is positive. A non-positive value means the orthogonal-direction assumption or the principal-point assumption failed on that photo. The program records the value and still computes heights.
-6. **Reference scale and object height.** For a vertical reference with base \(b_r\), top \(t_r\), and known height \(H_r\), and for a vertical object with base \(b\), top \(t\), and unknown height \(H\),
-   \[
-   H = H_r \frac{\lVert t \times b \rVert \; \lVert v_z \times t_r \rVert \; (l \cdot b_r)}{\lVert t_r \times b_r \rVert \; \lVert v_z \times t \rVert \; (l \cdot b)}.
-   \]
-   All points are homogeneous \((x,y,1)\), \(l\) uses the scaling in step 4, and \(\lVert\cdot\rVert\) is the Euclidean norm. The same equation is applied to hand-marked lines and to automatically detected lines, so the experiment can separate an error in the formula from an error in the line detector.
-
-OpenCV is used to read and write images and for the Gaussian convolution. Line fitting, vanishing points, and the height equation are project code.
+All eight marks use OpenCV `DICT_4X4_50`. Use each ID once in the scene. Lay each base tag flat in front of its box and mount each top tag vertically on the corresponding front face. Align the **printed upper-left corner of the black square** on each base and top tag with the actual lower and upper endpoints of the same vertical line. Confirm the box stands square and measure the reference height on this line. Record the target's measured height separately for evaluation. See the [scene format](data/README.md) for the saved setup and [OpenCV's ArUco documentation](https://docs.opencv.org/4.12.0/de/d67/group__objdetect__aruco.html) for the dictionary.
 
 ## Experiments
 
-| Comparison | What changes | What is recorded |
-| --- | --- | --- |
-| Line source | hand-marked segments versus RANSAC segments | vanishing-point location, height of each object |
-| Object | each ruler-measured vertical object | absolute error in meters and relative error |
-| Scene | indoor orthogonal corner versus the harder scene | whether \(f^2\) is positive and whether the height error stays small |
+- **Geometry checks.** Use known projections to verify the estimator for level and pitched cameras, finite and infinite vanishing points, and degenerate inputs.
+- **Public development examples.** Use documented photographs with known reference dimensions and traceable target measurements. [Oxford library example, Figure 21](https://www.robots.ox.ac.uk/~vgg/publications/2000/Criminisi00a/criminisi00a.pdf)
+- **Independent captured examples.** Use a tripod for consistent framing and independently measure the targets. Reuse each object's measured height across photographs. Freeze the method and parameters before evaluating the reserved scenes.
+- **Controlled comparisons.** Compare the direct pixel-height ratio, manually annotated geometry, and fully automatic marker-based geometry on the same prepared photographs. Hold endpoints fixed in a separate experiment to isolate line estimation. Report height errors, zero-click success rate, unsuccessful cases with reasons, and annotation effort. Evaluate unmarked images separately with the manual or assisted modes.
 
-Relative error for an object is \(|H_{\mathrm{est}}-H_{\mathrm{ruler}}|/H_{\mathrm{ruler}}\).
+## Team and presentation
 
-Fixed settings to write down before running, and to keep unchanged across the table: Gaussian \(\sigma\), gradient threshold, RANSAC pixel threshold for a line, minimum segment length, and RANSAC threshold for a vanishing point. These are the hyperparameters. There is no learning rate.
+| Team member | Student ID | GitHub | Planned responsibilities |
+| --- | --- | --- | --- |
+| 刘军威 | 1230025933 | [Ricin-brony](https://github.com/Ricin-brony) | Projective geometry, vanishing-point estimation, and the measurement pipeline. |
+| 许彦熙 | 1230023419 | [cdwfb](https://github.com/cdwfb) | Scene preparation, independent measurements, the pixel-ratio baseline, and evaluation. |
 
-Hand-marked endpoints are a second input to the same equation. They are not a hidden correction applied after the automatic result.
+Both members review the automatic demo, reproduce the evaluation, and contribute to the presentation and report.
 
-## Expected outcomes and how they will be shown
+The **December 10 Pre** introduces the project. The presentation covers the task, one example of the input and expected output, the method, the experiment design, and the two members' responsibilities. [Pre content outline](docs/oral_presentation.md)
 
-- one overlay per scene showing lines, vanishing points, and the vertical segments
-- a table of ruler height, estimated height, and relative error for each object
-- the same table for hand-marked lines and for detected lines
-- the focal-length sanity value, including a scene where it is not meaningful
-- a short statement of which assumption failed when the harder scene is wrong: lines, orthogonality, or a non-vertical object
+## Requirements: software
 
-The oral presentation uses these as the expected outcomes. Measured numbers will be added only after the experiments run.
+The planned implementation targets Python 3.10 or later with NumPy, OpenCV-Python, and Matplotlib. See [requirements.txt](requirements.txt) for the dependency ranges. The geometry pipeline runs on a CPU.
 
-## How the rubric is addressed
+Create an environment with `python -m venv .venv`. Activate it with `.venv\Scripts\Activate.ps1` in PowerShell or `source .venv/bin/activate` on macOS and Linux. Then run `python -m pip install -r requirements.txt`.
 
-- **Difficulty:** one photograph, an implemented vanishing-point estimator, a projective height formula, and a scene that should break the assumptions.
-- **Innovation:** the comparison asks how much of the height error comes from the line detector and how much remains when the lines are marked by hand. The focal length is a check on the orthogonal assumption, separate from the height number.
-- **Experimental completeness:** the table above is the full experiment list for the week. Every test object has a ruler measurement taken by the team.
-- **Paper structure:** section headings below match the report template.
-- **Code:** each key step has a commented function slot in `src/metrology.py`.
-- **Webpage:** software, pretrained models, test preparation, test command, and environment are sections of this file.
+## Pretrained models
 
-## Report checklist
+The project uses classical vision and projective geometry. It does not train a model or load checkpoints. [Model and weight notes](weights/README.md)
 
-The English PDF uses `Final_report_template.tex`. Planned section content:
+## Preparation for testing
 
-- **Title:** Single-View Metrology from Orthogonal Vanishing Points
-- **Authors:** name and MUST ID of every member
-- **Abstract:** task, classical vanishing-point pipeline, self-captured scenes with ruler heights, and the comparisons above. The last line of the abstract is the GitHub URL of this repository: https://github.com/Ricin-brony/single-view-metrology
-- **Keywords:** single-view metrology; vanishing point; vanishing line; camera focal length; height measurement
-- **Introduction:** why one image does not determine height without a scene assumption, the orthogonal ground-plane assumption, and what the experiments compare
-- **Related work:** vanishing points, the Criminisi height relation, and robust line estimation, with what this pipeline follows and what it does not add
-- **Technical solution:** formulas for the line fit, the vanishing point, the vanishing line, the focal-length check, and the height ratio; a pipeline diagram
-- **Experiments:** scenes, every hyperparameter, the ruler protocol, the quantitative table, and the qualitative figures
-- **Discussion:** strengths, sensitivity to the line detector, and the failure of a tilted object or a wrong principal point
-- **Conclusion:** problem, method, and results
-- **Member contributions:** one paragraph per person
-- **References:** every paper or lecture source cited in the text is listed and cited at the point of use
+1. Prepare a scene with a known reference height. Save the marker profile for automatic runs or mark its geometry for a manual run. Record target ground truth separately if available. [Scene format](data/README.md)
+2. The planned reproducibility check will use a versioned synthetic example and a documented configuration. A clean environment should be able to regenerate the same overlay and measurement table.
+3. These commands describe the planned interfaces. They will become the supported quick start when the implementation and examples are available.
 
-PDF file name, in Chinese, containing every member’s name and student ID. One member uploads it. Do not submit a second copy from another member.
-
-Optional extra material after the system runs: a screen recording of the test command, and the oral slides.
-
-## One-week schedule
-
-| Day | Work |
-| --- | --- |
-| 1 | Capture both scenes. Measure every test object with a ruler. Mark base and top points. |
-| 2 | Gradient edges and RANSAC line segments. Save the edge and line figures. |
-| 3 | Three vanishing points, the ground vanishing line, and the focal-length check. |
-| 4 | Height formula on hand-marked lines, then on the detected lines. |
-| 5 | Run the full table on both scenes. Export figures. |
-| 6 | Write the English report from the template. Fill measured numbers only from day 5. |
-| 7 | Check this page against the assignment list, record the test command output, and submit the single PDF. |
-
-## Lecture material used in the pipeline
-
-- Homogeneous coordinates, least squares, and a null-space fit for a line and for a vanishing point
-- Vanishing points, the vanishing line of a plane, and RANSAC
-- A pinhole camera, the principal point, and focal length from two orthogonal vanishing points
-- A projective invariant that turns one known height into another height
-- Gaussian smoothing and gradient magnitude before line extraction
-
-Lectures on stereo matching, convolutional networks, detection, and sequence models are outside the implemented system. They stay in related work only if a sentence needs them. The week is reserved for a finished height estimate and a complete comparison against the ruler.
-
-## Key module comments
-
-See `src/metrology.py`. Each function states its input, output, and the course idea it implements. The bodies will be filled during the week.
-
-## Repository layout
-
-```text
-README.md                 this webpage
-requirements.txt          Python packages
-src/metrology.py          pipeline functions
-docs/oral_presentation.md five-minute oral script
-docs/report_map.md        report template mapped section by section
-data/                     photographs and ruler annotations, added during the week
-results/                  outputs, not committed until they exist
-weights/                  unused; explained above
+```bash
+python -m src.metrology --input data/example --output results/example --save-debug results/example/debug
+python -m src.metrology --mode auto --input data/rigged-example --output results/rigged-example --save-debug results/rigged-example/debug
 ```
+
+The planned outputs are `overlay.png`, `heights.csv`, and `run.json`. The run record will preserve the input annotations, configuration, line source, and quality reasons used to obtain the result.
+
+## Acceptance criteria
+
+- With a saved setup profile and a valid photograph of a prepared scene, the automatic mode produces a height and the three output files with zero per-photo annotations.
+- A missing or ambiguous required marker returns a clear failure reason. The measured height is empty for a rejected target.
+- The automatic and manual modes share the same geometry and retain the inputs needed to replay a result. The held-out evaluation reports both height error and zero-click success rate, including failed cases.
+- The provisional team targets for valid held-out scenes are at least **90% zero-click success** and a **median absolute relative height error of at most 5%** among successful cases. Confirm and freeze the test conditions and targets using development captures before running the held-out set.
+
+## Development and report
+
+The measurement goals, data contract, and acceptance criteria guide the implementation. The initial Python skeleton is a starting point. Replace individual components or rebuild the pipeline where that better serves these requirements. Record interface changes and verify the relevant examples against the acceptance criteria.
+
+- [Development order and acceptance criteria](docs/development_plan.md)
+- [Data and annotation contract](data/README.md)
+- [Final report map](docs/report_map.md)
