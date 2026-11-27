@@ -1,8 +1,8 @@
 # 单视图测高：用消失点从一张照片测高度
 
-用一张照片和一件已知高度的参照物，估算另一件竖直物体的实际高度。项目的主要目标是在提前摆好纸标的场景里，选好照片后自动测高，省去每张图手动标点的步骤。程序计划同时输出解释图、质量判断和可复跑的测量记录。
+用一张照片和一件已知高度的参照物，估算另一件竖直物体的实际高度。项目的主要目标是在提前摆好纸标的场景里，选好照片后自动测高，省去每张图手动标点的步骤。程序同时输出解释图、质量判断和可复跑的测量记录。
 
-**当前进度**：已有 Python 代码骨架和项目文档。测量流程、演示和实验结果待实现和验证。
+**当前进度**：器材到齐前的开发使用合成场景，覆盖手动与自动测高、像素比例对照和缺标拒测。实物照片采集和正式精度验收在器材到齐后进行。
 
 这是澳门科技大学计算机视觉课程 CS460 / EIE460 / SE460 的自选期末项目。
 
@@ -76,16 +76,24 @@
 
 ## 测试准备
 
-1. 先准备参考物实测高度已知的场景。自动模式使用保存好的纸标配置，手动模式使用已标注的辅助线和顶脚点。有待测物实测值时单独保存。[场景文件格式](data/README.md)
-2. 复现测试计划使用纳入版本管理的合成样例和书面配置。在干净环境里应能重新生成相同的标注图和测量表。
-3. 以下为计划中的命令。等实现和样例就绪并验证后，再作为快速开始说明。
+在仓库根目录安装依赖后，运行以下命令生成水平同深度、俯拍且前后错开、缺少目标箱顶标三种合成样例。已知参考物高 20 cm，目标物高 30 cm。
 
 ```bash
-python -m src.metrology --input data/example --output results/example --save-debug results/example/debug
-python -m src.metrology --mode auto --input data/rigged-example --output results/rigged-example --save-debug results/rigged-example/debug
+python -m tools.generate_synthetic --output results/synthetic
+python -m unittest discover -s tests -v
 ```
 
-计划生成 `overlay.png`（标注图）、`heights.csv`（高度表）和 `run.json`（运行记录）。运行记录保存所用配置、点线标注、辅助线来源和质量判断原因，方便复跑。
+测量前先准备参考物实测高度。自动模式从 `image.jpg`、`reference.txt` 和 `rig.json` 得到测量输入。手动模式使用已标注的辅助线和顶脚点。目标物的实测值单独放进 `truth.txt`，由评估命令读取。[场景文件格式](data/README.md)
+
+```bash
+python -m src.metrology --mode manual --input results/synthetic/level_equal_depth --output results/manual
+python -m src.metrology --mode auto --input results/synthetic/pitched_staggered --output results/auto --save-debug results/auto/replay
+python -m src.evaluate --scene results/synthetic/level_equal_depth --scene results/synthetic/pitched_staggered --scene results/synthetic/missing_marker --output results/comparison
+```
+
+测量输出 `overlay.png`（标注图）、`heights.csv`（高度表）和 `run.json`（运行记录）。记录包含配置、点线标注、消失点和测量状态。`--save-debug` 可把当前使用的标注保存成手动模式能重放的场景。有拒测结果时测量命令返回退出码 1，结果文件仍保留原因。对比命令生成 `comparison.csv` 和 `summary.json`，按方法统计成功率和误差。合成样例中的缺标场景专门用于检查拒测，三张测试图的汇总用于开发验证。
+
+在俯拍且两箱前后错开的合成例中，目标真值为 30 cm。直接按像素长度比例得到约 24.84 cm，手动透视校正得到 30.00 cm，全自动得到约 29.74 cm。标注图中的绿色长线是底板水平面的消失线，青色线表示把参考高度换算到目标所在位置。实物精度需要用独立留出的真机照片验收。
 
 ## 验收标准
 
