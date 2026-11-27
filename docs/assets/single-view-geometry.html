@@ -1892,22 +1892,25 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;section id=&quot;single-view-geometry&quot;&gt;
   &lt;style&gt;
     #single-view-geometry { display: grid; gap: calc(var(--font-size-base, 14px) * .7); }
-    #single-view-geometry .geometry-stage { display: block; width: 100%; height: clamp(288px, 52vw, 390px); }
+    #single-view-geometry .geometry-stage { display: block; width: 100%; height: clamp(320px, 55vw, 425px); }
     #single-view-geometry .geometry-stage[data-view=&quot;spatial&quot;] { touch-action: none; }
     #single-view-geometry .geometry-controls { display: flex; flex-wrap: wrap; gap: calc(var(--font-size-base, 14px) * .45); }
     #single-view-geometry .geometry-detail { min-block-size: 2.8em; }
   &lt;/style&gt;
-  &lt;h2&gt;一张照片里的立体测高&lt;/h2&gt;
+  &lt;h2&gt;一张照片怎样量高度&lt;/h2&gt;
+  &lt;div class=&quot;geometry-controls&quot; role=&quot;group&quot; aria-label=&quot;播放控制&quot;&gt;
+    &lt;button class=&quot;btn btn-primary&quot; type=&quot;button&quot; data-play&gt;播放&lt;/button&gt;
+    &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-replay&gt;重播&lt;/button&gt;
+  &lt;/div&gt;
   &lt;canvas class=&quot;geometry-stage&quot; data-view=&quot;spatial&quot; role=&quot;img&quot; aria-label=&quot;两只竖直纸箱放在同一块底板上&quot; aria-describedby=&quot;single-view-detail&quot;&gt;&lt;/canvas&gt;
   &lt;div class=&quot;geometry-controls&quot; role=&quot;group&quot; aria-label=&quot;几何演示步骤&quot;&gt;
-    &lt;button class=&quot;btn btn-primary&quot; type=&quot;button&quot; data-play&gt;播放&lt;/button&gt;
     &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-step=&quot;0&quot; aria-pressed=&quot;true&quot;&gt;立体布置&lt;/button&gt;
-    &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-step=&quot;1&quot; aria-pressed=&quot;false&quot;&gt;移动 20 cm 标尺&lt;/button&gt;
+    &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-step=&quot;1&quot; aria-pressed=&quot;false&quot;&gt;移标尺&lt;/button&gt;
     &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-step=&quot;2&quot; aria-pressed=&quot;false&quot;&gt;找消失线&lt;/button&gt;
     &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-step=&quot;3&quot; aria-pressed=&quot;false&quot;&gt;定位等高点&lt;/button&gt;
     &lt;button class=&quot;btn&quot; type=&quot;button&quot; data-step=&quot;4&quot; aria-pressed=&quot;false&quot;&gt;校正高度&lt;/button&gt;
   &lt;/div&gt;
-  &lt;p id=&quot;single-view-detail&quot; class=&quot;geometry-detail&quot; aria-live=&quot;polite&quot;&gt;两个箱脚都在底板上，参考箱的实际高度是 20 cm。&lt;/p&gt;
+  &lt;p id=&quot;single-view-detail&quot; class=&quot;geometry-detail&quot; aria-live=&quot;polite&quot;&gt;合成立体布置。参考箱高 20 cm，拖动可旋转。&lt;/p&gt;
 &lt;/section&gt;
 &lt;script&gt;
 (() =&gt; {
@@ -1917,16 +1920,17 @@ html&gt;body{padding:0}&lt;/style&gt;
   const detail = root.querySelector(&quot;.geometry-detail&quot;);
   const controls = [...root.querySelectorAll(&quot;[data-step]&quot;)];
   const play = root.querySelector(&quot;[data-play]&quot;);
+  const replay = root.querySelector(&quot;[data-replay]&quot;);
   const colorProbe = document.createElement(&quot;span&quot;);
   colorProbe.hidden = true;
   root.append(colorProbe);
   const reducedMotion = matchMedia(&quot;(prefers-reduced-motion: reduce)&quot;);
   const description = [
-    &quot;两个箱脚都在底板上，参考箱的实际高度是 20 cm。&quot;,
-    &quot;把 20 cm 的标尺平移到目标脚边，两个等高的顶点连线与两脚的连线平行。&quot;,
-    &quot;底板两组对边各指向一个消失点，两个消失点连成消失线。&quot;,
-    &quot;两脚连线延伸到 U。参考箱顶连到 U 后，与目标竖线相交在 Q。&quot;,
-    &quot;竖线自身也受透视影响，借助竖直消失点校正 Q 和实际箱顶的比例。&quot;,
+    &quot;合成立体布置。参考箱高 20 cm，拖动可旋转。&quot;,
+    &quot;把标尺搬到目标箱脚边。尺顶的连线和两箱脚的连线在空间中平行。&quot;,
+    &quot;转到相机画面。两组底板对边确定两个消失点，连接它们就得到消失线。&quot;,
+    &quot;两箱脚的连线和尺顶连线朝同一个 U 汇聚。Q 是目标位置的 20 cm 刻度。&quot;,
+    &quot;放大目标竖线。用竖直消失点校正图像比例，得到实际高度。&quot;,
   ];
 
   // Geometry from the attached run, in its original 2000 × 1400 image coordinates.
@@ -1961,6 +1965,13 @@ html&gt;body{padding:0}&lt;/style&gt;
   let animation = 0;
   let timer = 0;
   let playing = false;
+  let motion = null;
+
+  const clamp = (value) =&gt; Math.max(0, Math.min(1, value));
+  const ease = (value) =&gt; {
+    const t = clamp(value);
+    return t * t * (3 - 2 * t);
+  };
 
   function theme() {
     const style = getComputedStyle(root);
@@ -2008,7 +2019,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     context.fillStyle = palette.surface;
     context.fill();
     context.save();
-    context.globalAlpha = opacity;
+    context.globalAlpha *= opacity;
     context.fillStyle = fill;
     context.fill();
     context.restore();
@@ -2022,6 +2033,11 @@ html&gt;body{padding:0}&lt;/style&gt;
     context.arc(point[0], point[1], radius, 0, Math.PI * 2);
     context.fillStyle = color;
     context.fill();
+  }
+
+  function markedPoint(point, color, radius = 5, outlineWidth = 2) {
+    dot(point, palette.surface, radius + outlineWidth);
+    dot(point, color, radius);
   }
 
   function label(text, point, align = &quot;left&quot;, secondary = false) {
@@ -2055,14 +2071,25 @@ html&gt;body{padding:0}&lt;/style&gt;
             [x, y, z + rise], [x + across, y, z + rise], [x + across, y + depth, z + rise], [x, y + depth, z + rise]];
   }
 
-  function spatialModel() {
-    const board = prism(-1.10, .40, -.045, 2.10, 1.50, .045);
-    const reference = prism(-.47, .85, 0, .25, .26, .20);
-    const target = prism(.32, 1.55, 0, .26, .28, .30);
-    const cameraBody = prism(-.15, -3.00, .91, .28, .20, .18);
-    const eye = [0, -2.8, 1.0];
-    const floorCorners = board.slice(4);
+  const board = prism(-1.10, .40, -.045, 2.10, 1.50, .045);
+  const reference = prism(-.47, .85, 0, .34, .31, .20);
+  const target = prism(.32, 1.55, 0, .34, .31, .30);
+  const eye = [0, -2.8, 1.0];
+  const worldFloor = [board[7], board[6], board[5], board[4]];
+  const worldEqual = [target[0][0], target[0][1], .2];
+  // This is the generating camera of pitched_staggered/scene.json.
+  const cameraRotation = [
+    [.9878972377, -.1461952414, -.0518266263],
+    [-.0711692336, -.1303460449, -.9889109408],
+    [.1378186779, .9806308480, -.1391731010],
+  ];
+  function pinhole(vertex) {
+    const ray = vertex.map((value, i) =&gt; value - eye[i]);
+    const [x, y, z] = cameraRotation.map((row) =&gt; row.reduce((sum, cell, i) =&gt; sum + cell * ray[i], 0));
+    return [1000 + 1600 * x / z, 650 + 1600 * y / z];
+  }
 
+  function spatialLayout() {
     const cosine = Math.cos(yaw);
     const sine = Math.sin(yaw);
     function rotate([x, y, z]) {
@@ -2070,122 +2097,140 @@ html&gt;body{padding:0}&lt;/style&gt;
       return [x * cosine - y * sine, -depth * Math.sin(pitch) - z * Math.cos(pitch),
               depth * Math.cos(pitch) - z * Math.sin(pitch)];
     }
-    const inView = [...board, ...reference, ...target, ...(stage === 0 ? cameraBody : [])];
-    const fit = projection(inView.map(rotate), 28, 43);
-    const point = (vertex) =&gt; fit(rotate(vertex));
+    const fit = projection([...board, ...reference, ...target].map(rotate), width &lt; 450 ? 23 : 46, 48);
+    return {point: (vertex) =&gt; fit(rotate(vertex)), rotate};
+  }
 
+  function paintSolids(solids, point, rotate) {
     const faces = [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7]];
-    function paintSolids(solids) {
-      const surfaces = solids.flatMap(([solid, color]) =&gt; faces.map((face, index) =&gt; {
-        const vertices = face.map((i) =&gt; solid[i]);
-        const depth = vertices.reduce((sum, v) =&gt; sum + rotate(v)[2], 0) / vertices.length;
-        return { vertices, color, depth, index };
-      }));
-      surfaces.sort((a, b) =&gt; b.depth - a.depth).forEach(({vertices, color, index}) =&gt; {
-        outline(vertices.map(point), color, palette.edge, index === 4 ? .17 : .29);
-      });
-    }
-    paintSolids([[board, palette.ink]]);
-    const solids = [[reference, palette.reference], [target, palette.target]];
-    if (stage === 0) solids.push([cameraBody, palette.ink]);
-    paintSolids(solids);
+    const surfaces = solids.flatMap(([solid, color]) =&gt; faces.map((face, index) =&gt; {
+      const vertices = face.map((i) =&gt; solid[i]);
+      const depth = vertices.reduce((sum, v) =&gt; sum + rotate(v)[2], 0) / vertices.length;
+      return { vertices, color, depth, index };
+    }));
+    surfaces.sort((a, b) =&gt; b.depth - a.depth).forEach(({vertices, color, index}) =&gt; {
+      outline(vertices.map(point), color, palette.edge, index === 4 ? .12 : .29);
+    });
+  }
 
-    for (const corner of floorCorners) dot(point(corner), palette.plane, 3.5);
-    if (stage === 0) segment(point(eye), point(target[0]), palette.muted, 1.1, [3, 5]);
-    segment(point(reference[0]), point(reference[4]), palette.reference, 3.1);
-    segment(point(target[0]), point(target[4]), palette.target, 3.1);
-    dot(point(reference[0]), palette.reference);
-    dot(point(target[0]), palette.target);
+  function drawSlab(floorPoints) {
+    outline(floorPoints, palette.plane, palette.edge, .075);
+    floorPoints.forEach((point) =&gt; markedPoint(point, palette.plane, 3.5));
+  }
+
+  function measureAxes(ref, target, weight = 3.5, radius = 4.6, outlineWidth = 2) {
+    segment(ref[0], ref[1], palette.reference, weight);
+    segment(target[0], target[1], palette.target, weight);
+    ref.forEach((point) =&gt; markedPoint(point, palette.reference, radius, outlineWidth));
+    target.forEach((point) =&gt; markedPoint(point, palette.target, radius, outlineWidth));
+  }
+
+  function spatialModel() {
+    const {point, rotate} = spatialLayout();
+    paintSolids([[board, palette.ink]], point, rotate);
+    paintSolids([[reference, palette.reference], [target, palette.target]], point, rotate);
+    worldFloor.forEach((corner) =&gt; markedPoint(point(corner), palette.plane, 3.5));
+    measureAxes([reference[0], reference[4]].map(point), [target[0], target[4]].map(point));
 
     const a = point(reference[4]);
     const b = point(target[4]);
     label(&quot;参考箱 20 cm&quot;, [a[0] - 7, a[1] - 14], &quot;right&quot;);
     label(&quot;目标箱&quot;, [b[0] + 8, b[1] - 14]);
-    if (stage === 0) {
-      const c = point(eye);
-      label(&quot;相机&quot;, [c[0], c[1] + 22], &quot;center&quot;);
-    }
 
     if (stage === 1) {
       const bottom = between(reference[0], target[0], phase);
       const top = [bottom[0], bottom[1], .20];
-      segment(point(reference[0]), point(bottom), palette.transfer, 1.7, [5, 4]);
-      segment(point(reference[4]), point(top), palette.transfer, 1.7, [5, 4]);
-      segment(point(bottom), point(top), palette.transfer, 3.5);
-      dot(point(top), palette.transfer, 5);
-      if (phase &gt;= .9) {
-        const copied = point(top);
-        label(&quot;同高点&quot;, [copied[0] + 11, copied[1] + 8], &quot;left&quot;, true);
-      }
+      segment(point(reference[0]), point(bottom), palette.muted, 1.7, [5, 4]);
+      segment(point(reference[4]), point(top), palette.transfer, 2.2, [5, 4]);
+      segment(point(bottom), point(top), palette.transfer, 5);
+      markedPoint(point(top), palette.transfer, 5.6);
+      markedPoint(point(bottom), palette.transfer, 4.2);
+      const labelPosition = point(top);
+      if (phase &gt;= .18) label(&quot;20 cm 标尺&quot;, [labelPosition[0] + 11, labelPosition[1] + 12], &quot;left&quot;, true);
     }
   }
 
-  function photoConstruction() {
-    const expanded = stage === 3;
-    const region = expanded ? [[90, 290], [2540, 1070]] : [[95, 350], [1480, 1050]];
-    const screen = projection(region, 20, 30);
-    outline(floor.map(screen), palette.plane, palette.edge, .08);
-    floor.forEach((point) =&gt; dot(screen(point), palette.plane, 4));
-    const [a, b, c] = horizon;
-    const onHorizon = (x) =&gt; [x, -(a * x + c) / b];
+  function photoLayout(step) {
+    const expanded = step === 3;
+    const right = expanded &amp;&amp; width &gt;= 490 ? 2510 : 1400;
+    const region = [[120, expanded ? 290 : 345], [right, 1030]];
+    return {screen: projection(region, 20, 30), expanded, right};
+  }
 
-    if (expanded) {
-      const edge = screen([2000, 1060]);
+  function onHorizon(x) {
+    const [a, b, c] = horizon;
+    return [x, -(a * x + c) / b];
+  }
+
+  function photoConstruction() {
+    const {screen, expanded, right} = photoLayout(stage);
+    drawSlab(floor.map(screen));
+    const visibleU = transferDirection[0] &lt; right;
+    const compact = width &lt; 490;
+
+    if (expanded &amp;&amp; visibleU) {
+      const edge = screen([2000, 1000]);
       segment(screen([2000, 330]), edge, palette.edge, 1.2, [3, 5]);
-      if (width &gt;= 414) label(&quot;原图右缘&quot;, [edge[0] - 5, edge[1] + 12], &quot;right&quot;, true);
+      label(&quot;原图右缘&quot;, [edge[0] - 5, edge[1] + 12], &quot;right&quot;, true);
     }
 
     function extension(start, stop, color, completion) {
       segment(screen(start), screen(between(start, stop, completion)), color, 1.4, [5, 5]);
     }
     if (!expanded) {
+      const across = [[floor[0], floor[1]], [floor[3], floor[2]]];
+      const away = [[floor[0], floor[3]], [floor[1], floor[2]]];
+      for (const [a, b] of [...across, ...away]) segment(screen(a), screen(b), palette.plane, 1.9);
       for (const start of [floor[0], floor[1]]) {
         extension(start, farVanishingPoint, palette.plane, phase);
       }
       for (const start of [floor[1], floor[2]]) {
-        const t = (1440 - start[0]) / (acrossVanishingPoint[0] - start[0]);
+        const t = (right - 17 - start[0]) / (acrossVanishingPoint[0] - start[0]);
         extension(start, between(start, acrossVanishingPoint, t), palette.plane, phase);
       }
     }
-    const rightX = expanded ? 2480 : 1430;
-    const horizonPhase = expanded ? 1 : Math.max(0, (phase - .25) / .75);
-    segment(screen(onHorizon(95)), screen(onHorizon(95 + (rightX - 95) * horizonPhase)), palette.plane, 2.1);
+    const rightX = right - 18;
+    const horizonPhase = expanded ? 1 : ease((phase - .26) / .74);
+    segment(screen(onHorizon(124)), screen(onHorizon(124 + (rightX - 124) * horizonPhase)), palette.plane, 2.7);
     if (phase &gt; .7 || expanded) {
       const named = screen(onHorizon(expanded ? 440 : 350));
       label(&quot;底板消失线&quot;, [named[0], named[1] - 14]);
     }
     if (!expanded &amp;&amp; phase &gt; .88) {
       const seen = screen(farVanishingPoint);
-      dot(seen, palette.plane, 5);
-      label(&quot;前后方向消失点&quot;, [seen[0] + 7, seen[1] + 15], &quot;left&quot;, true);
-      const right = screen(onHorizon(1420));
-      label(&quot;另一消失点 →&quot;, [right[0], right[1] - 14], &quot;right&quot;, true);
+      markedPoint(seen, palette.plane, 5);
+      label(&quot;前后方向消失点&quot;, [seen[0] + 7, seen[1] + 17], &quot;left&quot;, true);
+      const edge = screen(onHorizon(rightX));
+      label(&quot;另一点在画外 →&quot;, [edge[0], edge[1] - 15], &quot;right&quot;, true);
     }
 
-    segment(screen(refBase), screen(refTop), palette.reference, 3.2);
-    segment(screen(targetBase), screen(targetTop), palette.target, 3.2);
-    for (const v of [refBase, refTop]) dot(screen(v), palette.reference);
-    for (const v of [targetBase, targetTop]) dot(screen(v), palette.target);
+    measureAxes([refBase, refTop].map(screen), [targetBase, targetTop].map(screen), compact ? 2.8 : 3.9,
+                compact ? 3 : 4.6, compact ? 1.2 : 2);
     const refLabel = screen(refTop);
     const targetLabel = screen(targetTop);
     label(&quot;参考 20 cm&quot;, [refLabel[0] - 7, refLabel[1] - 12], &quot;right&quot;);
     label(&quot;目标箱&quot;, [targetLabel[0] + 8, targetLabel[1] - 12]);
 
     if (expanded) {
-      extension(refBase, transferDirection, palette.muted, Math.min(1, phase * 1.85));
-      const second = Math.max(0, Math.min(1, (phase - .43) / .52));
-      if (phase &gt; .50) {
-        const u = screen(transferDirection);
-        dot(u, palette.transfer, 5);
-        label(width &gt; 465 ? &quot;U · 两脚方向的消失点&quot; : &quot;U&quot;, [u[0] - 8, u[1] - 16], &quot;right&quot;);
+      const visibleEnd = (from) =&gt; visibleU ? transferDirection :
+        between(from, transferDirection, (rightX - from[0]) / (transferDirection[0] - from[0]));
+      extension(refBase, visibleEnd(refBase), palette.muted, ease(phase / .52));
+      const second = ease((phase - .40) / .60);
+      if (phase &gt; .49) {
+        const u = screen(visibleU ? transferDirection : onHorizon(rightX));
+        if (visibleU) markedPoint(u, palette.transfer, 6);
+        label(visibleU ? &quot;U · 两条平行线的消失点&quot; : &quot;U 在画外 →&quot;, [u[0] - 7, u[1] - 17], &quot;right&quot;);
       }
       if (second &gt; 0) {
-        segment(screen(refTop), screen(between(refTop, transferDirection, second)), palette.transfer, 2.1);
+        segment(screen(refTop), screen(between(refTop, visibleEnd(refTop), second)), palette.transfer, 2.8);
       }
-      if (second &gt; .30) {
+      const equalReached = (equalTop[0] - refTop[0]) / (visibleEnd(refTop)[0] - refTop[0]);
+      if (second &gt;= equalReached) {
+        const base = screen(targetBase);
         const q = screen(equalTop);
-        dot(q, palette.transfer, 5.5);
-        label(&quot;Q · 20 cm&quot;, [q[0] + 10, q[1] + 18]);
+        segment(base, q, palette.transfer, compact ? 3.2 : 4.5);
+        markedPoint(q, palette.transfer, compact ? 3.2 : 6, compact ? 1.2 : 2);
+        label(compact ? &quot;Q · 20 cm&quot; : &quot;Q · 20 cm 的尺顶&quot;, [q[0] + 11, q[1] + 15]);
       }
     }
   }
@@ -2200,26 +2245,33 @@ html&gt;body{padding:0}&lt;/style&gt;
     label(text, [middle[0] + (xOffset &lt; 0 ? -9 : 9), middle[1]], xOffset &lt; 0 ? &quot;right&quot; : &quot;left&quot;);
   }
 
-  function verticalDetail() {
+  function detailLayout() {
     const base = [width * .50, heightPx * .76];
     const scale = (heightPx * .54) / (targetBase[1] - targetTop[1]);
     const screen = (p) =&gt; [base[0] + (p[0] - targetBase[0]) * scale,
                            base[1] + (p[1] - targetBase[1]) * scale];
+    return {base, scale, screen};
+  }
+
+  function verticalDetail() {
+    const {base, scale, screen} = detailLayout();
     const top = screen(targetTop);
     const equal = screen(equalTop);
     const towardVanishing = screen(between(targetBase, verticalVanishingPoint, (heightPx - 38 - base[1]) / (scale * (verticalVanishingPoint[1] - targetBase[1]))));
-    segment(base, between(base, top, phase), palette.target, 3.3);
-    if (phase &gt; .57) segment(base, equal, palette.transfer, 4);
+    segment(base, top, palette.target, 4.8);
+    segment(base, equal, palette.transfer, 5.6);
+    markedPoint(top, palette.target, 6);
+    markedPoint(equal, palette.transfer, 6);
     segment(base, towardVanishing, palette.plane, 1.5, [4, 4]);
-    if (phase &gt; .92) {
-      dot(top, palette.target, 6);
+    if (phase &gt; .12) {
       label(&quot;目标箱顶&quot;, [top[0] + 11, top[1] - 1]);
-      bracket(base, top, width &lt; 390 ? 32 : 58, palette.target, `${height.toFixed(2)} cm`);
     }
-    if (phase &gt; .60) {
-      dot(equal, palette.transfer, 6);
+    if (phase &gt; .24) {
       label(&quot;Q&quot;, [equal[0] + 12, equal[1] + 1]);
       bracket(base, equal, width &lt; 390 ? -37 : -67, palette.transfer, &quot;20 cm&quot;);
+    }
+    if (phase &gt; .63) {
+      bracket(base, top, width &lt; 390 ? 29 : 61, palette.target, `${height.toFixed(2)} cm`);
     }
     dot(base, palette.ink, 5);
     label(&quot;目标箱脚&quot;, [base[0] + 11, base[1] + 3]);
@@ -2229,16 +2281,87 @@ html&gt;body{padding:0}&lt;/style&gt;
     label(&quot;竖直消失点在画外&quot;, [x, y + 14], &quot;center&quot;, true);
   }
 
+  function pose(step) {
+    if (step &lt; 2) {
+      const {point} = spatialLayout();
+      return {
+        floor: worldFloor.map(point), ref: [reference[0], reference[4]].map(point),
+        target: [target[0], target[4]].map(point), equal: point(worldEqual),
+        plane: 1, ruler: step === 1 ? 1 : 0,
+      };
+    }
+    const map = step === 4 ? detailLayout().screen : photoLayout(step).screen;
+    return {
+      floor: floor.map(map), ref: [refBase, refTop].map(map),
+      target: [targetBase, targetTop].map(map), equal: map(equalTop),
+      plane: step === 4 ? 0 : 1, ruler: step &gt;= 3 ? 1 : 0,
+    };
+  }
+
+  function currentPose() {
+    const to = pose(stage);
+    if (!motion) return to;
+    const {from, amount} = motion;
+    const mix = (key) =&gt; from[key].map((point, i) =&gt; between(point, to[key][i], amount));
+    return {
+      floor: mix(&quot;floor&quot;), ref: mix(&quot;ref&quot;), target: mix(&quot;target&quot;),
+      equal: between(from.equal, to.equal, amount),
+      plane: from.plane + (to.plane - from.plane) * amount,
+      ruler: from.ruler + (to.ruler - from.ruler) * amount,
+    };
+  }
+
+  function drawMovement() {
+    const picture = currentPose();
+    context.save();
+    context.globalAlpha = picture.plane;
+    drawSlab(picture.floor);
+    context.restore();
+
+    // On the 3D-to-photo transition, project the box faces through the same
+    // pinhole camera that generated the sample. The retained dots finish at
+    // the measured image points, including their small detection offsets.
+    if (motion.model &amp;&amp; stage === 2) {
+      const map = photoLayout(2).screen;
+      const move = (vertex) =&gt; between(motion.model.point(vertex), map(pinhole(vertex)), motion.amount);
+      context.save();
+      context.globalAlpha = 1 - ease((motion.amount - .33) / .67);
+      paintSolids([[reference, palette.reference], [target, palette.target]], move, motion.model.rotate);
+      context.restore();
+    }
+
+    context.save();
+    context.globalAlpha = picture.plane;
+    segment(picture.ref[0], picture.ref[1], palette.reference, 3.7);
+    picture.ref.forEach((point) =&gt; markedPoint(point, palette.reference, 4.8));
+    context.restore();
+    segment(picture.target[0], picture.target[1], palette.target, 4.5);
+    picture.target.forEach((point) =&gt; markedPoint(point, palette.target, 5.1));
+    if (picture.ruler &gt; 0) {
+      context.save();
+      context.globalAlpha = picture.ruler;
+      segment(picture.target[0], picture.equal, palette.transfer, 4.7);
+      markedPoint(picture.equal, palette.transfer, 5.7);
+      context.restore();
+    }
+  }
+
   function draw() {
     if (!width || !heightPx) return;
     context.clearRect(0, 0, width, heightPx);
-    if (stage &lt; 2) spatialModel();
+    if (motion) drawMovement();
+    else if (stage &lt; 2) spatialModel();
     else if (stage &lt; 4) photoConstruction();
     else verticalDetail();
   }
 
   function resize() {
     const bounds = canvas.getBoundingClientRect();
+    if (width &amp;&amp; (width !== bounds.width || heightPx !== bounds.height) &amp;&amp; motion) {
+      cancelAnimationFrame(animation);
+      motion = null;
+      phase = 1;
+    }
     width = bounds.width;
     heightPx = bounds.height;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -2250,22 +2373,33 @@ html&gt;body{padding:0}&lt;/style&gt;
   }
 
   function show(step, animate = true, remember = false) {
-    stage = Math.max(0, Math.min(description.length - 1, step));
+    const next = Math.max(0, Math.min(description.length - 1, step));
+    const canAnimate = animate &amp;&amp; !reducedMotion.matches &amp;&amp; width &gt; 0;
+    const move = canAnimate &amp;&amp; next !== stage &amp;&amp; (stage &gt;= 2 || next &gt;= 2);
+    const previous = move ? currentPose() : null;
+    const model = move &amp;&amp; stage &lt; 2 &amp;&amp; !motion ? spatialLayout() : null;
+    stage = next;
     cancelAnimationFrame(animation);
     canvas.dataset.view = stage &lt; 2 ? &quot;spatial&quot; : &quot;camera&quot;;
     detail.textContent = description[stage];
     canvas.setAttribute(&quot;aria-label&quot;, description[stage]);
     controls.forEach((button) =&gt; button.setAttribute(&quot;aria-pressed&quot;, String(Number(button.dataset.step) === stage)));
-    phase = animate &amp;&amp; stage &gt; 0 &amp;&amp; !reducedMotion.matches ? 0 : 1;
+    const moveTime = move ? 780 : 0;
+    const revealTime = canAnimate ? [0, 1400, 1000, 1300, 620][stage] : 0;
+    phase = revealTime ? 0 : 1;
+    motion = move ? {from: previous, amount: 0, model} : null;
     draw();
-    if (phase === 0) {
+    if (moveTime + revealTime &gt; 0) {
       const start = performance.now();
-      const duration = stage === 1 || stage === 3 ? 1320 : 800;
       const frame = (now) =&gt; {
-        const progress = Math.min(1, Math.max(0, (now - start) / duration));
-        phase = progress * progress * (3 - 2 * progress);
+        const elapsed = Math.max(0, now - start);
+        if (motion) {
+          if (elapsed &gt;= moveTime) motion = null;
+          else motion.amount = ease(elapsed / moveTime);
+        }
+        phase = revealTime ? ease((elapsed - moveTime) / revealTime) : 1;
         draw();
-        if (progress &lt; 1) animation = requestAnimationFrame(frame);
+        if (elapsed &lt; moveTime + revealTime) animation = requestAnimationFrame(frame);
       };
       animation = requestAnimationFrame(frame);
     }
@@ -2289,7 +2423,13 @@ html&gt;body{padding:0}&lt;/style&gt;
       }
       show(stage + 1, true, true);
       advance();
-    }, 3600);
+    }, 3900);
+  }
+
+  function startPlayback() {
+    playing = true;
+    play.textContent = &quot;暂停&quot;;
+    advance();
   }
 
   controls.forEach((button) =&gt; button.addEventListener(&quot;click&quot;, () =&gt; {
@@ -2298,14 +2438,17 @@ html&gt;body{padding:0}&lt;/style&gt;
   }));
   play.addEventListener(&quot;click&quot;, () =&gt; {
     if (playing) { stop(); return; }
-    if (stage === description.length - 1) show(0, false, true);
-    playing = true;
-    play.textContent = &quot;暂停&quot;;
-    advance();
+    if (stage === description.length - 1) show(0, true, true);
+    startPlayback();
+  });
+  replay.addEventListener(&quot;click&quot;, () =&gt; {
+    stop();
+    show(0, true, true);
+    startPlayback();
   });
 
   canvas.addEventListener(&quot;pointerdown&quot;, (event) =&gt; {
-    if (stage &gt;= 2) return;
+    if (stage &gt;= 2 || motion) return;
     drag = [event.clientX, event.clientY, yaw, pitch];
     canvas.setPointerCapture(event.pointerId);
   });
